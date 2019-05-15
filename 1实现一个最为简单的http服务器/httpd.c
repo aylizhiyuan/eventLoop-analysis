@@ -103,11 +103,13 @@ int main(int argc, char* argv[])
 {
     pthread_attr_t attr;
     uint16_t port = 0;
+    //传入传出参数，用于服务器自动生成端口号，并socket---> bind -----> listen 
     int sfd = serstart(&port);
     
     printf("httpd running on port %u.\n", port);
-    // 初始化线程属性
+    // 初始化线程属性，调用后，attr中包含的就是操作系统实现支持的线程所有属性的默认值
     pthread_attr_init(&attr);
+    //设置线程的分离状态，默认是不分离的状态，改为分离状态。这样当线程结束后，马上释放系统资源，否则要等到pthread_join函数返回时
     pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
     for(;;){
         pthread_t tid;
@@ -139,11 +141,13 @@ int main(int argc, char* argv[])
 int 
 getfdline(int fd, char buf[], int sz)
 {
+    //buf是指向数组的指针，tp也是指向数组的指针
     char* tp = buf;
     char c;
-    
+    //sz的值从1024开始减少
     --sz;
     while((tp-buf)<sz){
+        //读取从客户端发过来的数据，一个字节一个字节的读
         if(read(fd, &c, 1) <= 0) //伪造结束条件
             break;
         if(c == '\r'){ //全部以\r分割
@@ -153,6 +157,7 @@ getfdline(int fd, char buf[], int sz)
                 *tp++ = '\n';
             break;
         }
+        //不断的将读取的内容赋值给tp数组，tp数组内的指针不断的移动
         *tp++ = c;
     }
     *tp = '\0';
@@ -272,15 +277,20 @@ serstart(uint16_t* pport)
 {
     int sfd;
     struct sockaddr_in saddr = { AF_INET };
-    
-    IF_CHECK(sfd = socket(PF_INET, SOCK_STREAM, 0));
+    //创建一个socket连接,PF_INET代表的含义是IPV4协议,sock_stream代表的是TCP的数据流
+    //0代表的是协议，使用0代表根据前两个参数的默认协议走
+    IF_CHECK(sfd = socket(PF_INET, SOCK_STREAM, 0)); //返回socket文件描述符sfd
+    //将端口号转化为网络字节序
     saddr.sin_port = !pport || !*pport ? 0 : htons(*pport);
+    //地址设置为本机的地址,INADDR_ANY 就是0.0.0.0
     saddr.sin_addr.s_addr = INADDR_ANY;
     // 绑定一下端口信息
     IF_CHECK(bind(sfd, (struct sockaddr*)&saddr, sizeof saddr));
     if(pport && !*pport){
         socklen_t clen = sizeof saddr;
+        //在以端口号为0调用bind（告知内核去选择本地临时端口号）后，getsockname用于返回由内核赋予的本地端口号
         IF_CHECK(getsockname(sfd, (struct sockaddr*)&saddr, &clen));
+        //将端口号转化成网络字节序
         *pport = ntohs(saddr.sin_port);
     }
     // 开启监听任务
@@ -300,13 +310,15 @@ request_accept(void* arg)
     char *lt, *rt, *query, *nb = buf;
     struct stat st;
     int iscgi, cfd = (int)arg;
-
+    //获取我们的请求头数据，例如"GET /index.html HTTP/1.0"
     if(getfdline(cfd, buf, sizeof buf) <= 0){ //请求错误
         response_501(cfd);
         close(cfd);
         return NULL;
     }
     // 合法请求处理
+    //lt是一个32个元素的数组，rt是一个存储了HTTP头信息的1024的数组
+    //将请求的方式放入type数组里面
     for(lt=type, rt=nb; !sh_isspace(*rt) && (lt-type)< sizeof type - 1; *lt++ = *rt++)
         ;
     *lt = '\0'; //已经将 buf中开始不为empty 部分塞入了 type 中
