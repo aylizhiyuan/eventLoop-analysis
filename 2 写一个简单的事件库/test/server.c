@@ -48,8 +48,8 @@ void onaccept(int fd, int size, void *arg) {
       if (errno == EWOULDBLOCK || errno == ECONNABORTED
 	  || errno == EINTR || errno == EPROTO) {
 	continue;
-      } else
-	el_error("accept error!");
+      }else
+	    el_error("accept error!");
     }
     event *e = el_event_new(connfd, READ_EVENT, onread, loop);
     el_event_add(loop, e);
