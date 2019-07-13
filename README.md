@@ -92,3 +92,6 @@ mac下的配置文件在/usr/local/etc/nginx/nginx.conf
     - 重新开始记录日志文件 reopen
 7. 测试配置文件是否有语法错误 -t -T
 8. 打印nginx版本信息，编译信息 -v -V
+
+
+
