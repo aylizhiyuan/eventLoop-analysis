@@ -45,9 +45,18 @@ typedef struct __el_event_list {
   event *head;
 } el_event_list;
 
+typedef struct __io_multi {
+  const char *name;
+  io_init init;
+  io_add add;
+  io_del del;
+  io_dispatch dispatch;
+} io_multi;
+
 
 typedef struct __el_loop {
   int event_count;
+  io_multi io;
   int ioid;
   int timeout; //ms
   el_event_list *active_events;
@@ -61,6 +70,21 @@ void error(const char *msg) {
   fprintf(stderr, "%s\n", (char*)strerror(errno));
   exit(-1);
 }
+//事件初始化
+event *event_init(int fd, int flags, cb_func cb, void *arg) {
+  event *e = (event*) malloc(sizeof(event));
+  e->fd = fd;
+  e->flags = flags;
+  e->arg = arg;
+  e->cb = cb;
+  e->type = DEFAULT;
+  return e;
+}
+//释放事件的内存空间
+void event_free(event *ev) {
+  free(ev);
+}
+
 
 
 /**
@@ -83,6 +107,7 @@ el_event_list *event_list_init() {
 
 void event_list_put(el_event_list *list, event *item) {
   list->count++;
+
   item->prev = list->head->prev;
   list->head->prev->next = item;
   item->next = list->head;
@@ -93,8 +118,11 @@ event *event_list_get(el_event_list *list) {
   if (list->count <= 0)
     error("event list is empty!");
   list->count--;
+  //拿到下一个任务
   event *ret = list->head->next;
+  //将链表的下一个任务指向下下个任务
   list->head->next = ret->next;
+  //将下下个任务的上一个任务指向头部
   ret->next->prev = list->head;
   return ret;
 }
@@ -106,8 +134,11 @@ event *event_list_delete(el_event_list *list, int fd) {
   event *ret;
   for (i = 0; i < size; i++) {
     if (each->next->fd == fd) {
+      //ret就是当前要删除的任务
       ret = each->next;
+      //将删除任务的上一个任务
       ret->next->prev = each;
+      //将任务替换掉
       each->next = ret->next;
       break;
     }
@@ -131,14 +162,32 @@ void event_list_free(el_event_list *list) {
   free(list->head);
   free(list);
 }
+void onaccept(int fd, int size, void *arg) {
+    printf("hello e!!!!");
+}
 int main(){
     printf("hello world");
     //定义好Loop之后，这个loop中有一个等待的事件队列，和一个就绪的事件队列
     el_loop *loop = (el_loop*) malloc(sizeof(el_loop));
     //下面我们来分别进行赋值
+    loop->event_count = 0;
+    loop->timeout = -1;
     loop->active_events = event_list_init();
     loop->ready_events = event_list_init();
+
+    //给loop添加
+    loop->io.name = "kqueue";
+    loop->io.init = kqueue_init;
+    loop->io.add = kqueue_add;
+    loop->io.del = kqueue_del;
+    loop->io.dispatch = kqueue_dispatch;
+    
     //创建一个新的事件，并把它添加到事件的队列里面去
-    event *e = (event*) malloc(sizeof(event));
+    event *e = event_init(-1, "read", onaccept, loop);
+    
+    //新添加的事件跟初始化的事件交替连接
     event_list_put(loop->active_events,e);
+    loop->event_count++;
+    //这里还需要将该事件添加到kqueue里面去
+    loop->io.add(loop, e);
 }
