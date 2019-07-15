@@ -105,6 +105,8 @@ el_event_list *event_list_init() {
   return list;
 }
 
+
+
 void event_list_put(el_event_list *list, event *item) {
   list->count++;
 
@@ -176,18 +178,39 @@ int main(){
     loop->ready_events = event_list_init();
 
     //给loop添加
-    loop->io.name = "kqueue";
-    loop->io.init = kqueue_init;
-    loop->io.add = kqueue_add;
-    loop->io.del = kqueue_del;
-    loop->io.dispatch = kqueue_dispatch;
+    // loop->io.name = "kqueue";
+    // loop->io.init = kqueue_init;
+    // loop->io.add = kqueue_add;
+    // loop->io.del = kqueue_del;
+    // loop->io.dispatch = kqueue_dispatch;
+    // loop->io.init(loop);
     
     //创建一个新的事件，并把它添加到事件的队列里面去
-    event *e = event_init(-1, "read", onaccept, loop);
+    event *e = event_init(1, 1, onaccept, loop);
     
     //新添加的事件跟初始化的事件交替连接
+    //每新添加一个事件count值就加1，这是等待列表中的事件数量
     event_list_put(loop->active_events,e);
+    //循环体上的event_count加1
     loop->event_count++;
     //这里还需要将该事件添加到kqueue里面去
-    loop->io.add(loop, e);
+    //loop->io.add(loop, e);
+
+    //整体的大概思路是明白了，loop维护了两个事件列表,一个是等待列表，一个是就绪列表
+    //所有的事件首先进入等待列表中，记录长度和形成一个链表的结构
+    //下面开始循环，根据event_count中的数量进行外层的循环，这里不清楚含义
+    //里面的循环非常的简单，将就绪列表中的任务一个个的取出来，执行回调函数
+    //当就绪列表空了跳出内层循环
+    //当event_count值为0的时候跳出外层循环
+    //但我感觉这个循环应该是跳不出的，它应该是个无限的死循环，这得看我们下次修改的结果了
+    while (loop->event_count > 0) {
+      while (event_list_size(loop->ready_events) > 0) {
+        event *e = event_list_get(loop->ready_events);
+        //call the callback function
+        e->cb(e->fd, e->size, e->arg);
+        event_free(e);
+        loop->event_count--;
+      }
+  }
+  return 0;
 }
