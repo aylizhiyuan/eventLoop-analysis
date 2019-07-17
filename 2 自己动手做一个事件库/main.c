@@ -230,8 +230,10 @@ void kqueue_del(el_loop *loop, event *ev) {
 
 void kqueue_dispatch(el_loop *loop) {
   struct kevent events[MAX_EVENT_COUNT];
+  //首次是监听服务器有没有事件发生，如果有的话则返回ret
   int ret = kevent(loop->ioid, NULL, 0, events, MAX_EVENT_COUNT, NULL);
   int i;
+  //循环发生事件的socket
   for (i = 0; i < ret; i++) {
     int sock = events[i].ident;
     int data = events[i].data;
@@ -392,10 +394,21 @@ void onaccept(int fd, int size, void *arg) {
 }
 
 int main() {
+  //创建服务器的socket对象  
   int listenfd = create_listener();
-  
+  //创建一个loop对象
+  //创建一个active_list队列和一个ready队列
+  //在loop对象上添加对于kqueue的操作方法以及loop->ioid = kqueue函数
   el_loop *loop = el_loop_new();
+  //以服务器的socket对象创建一个新的事件,存储该事件的回调函数和事件的类型
   event *e = el_event_new(listenfd, READ_EVENT, onaccept, loop);
+  //将新的事件添加到loop->active_list队列中去，同时，将这个服务器的socket对象加入到kqueue中去
+  //
   el_event_add(loop, e);
+  //首先还是来看是否有客户端的连接上来，如果没有，该代码将会阻塞在这里
+  //如果有的话，将发生事件的客户端放入loop->ready_list队列中去
+  //从read_list中取出所有的事件，并调用这些事件的回调函数，直至完成
+  //这里面的事件主要是服务器的读事件和多个客户端的读事件，无论是谁发生了，都会继续的调用Loop来进行循环
+  //这就是一个简单的event loop
   return el_loop_run(loop);
 }
