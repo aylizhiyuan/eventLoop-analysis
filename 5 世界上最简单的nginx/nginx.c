@@ -1,4 +1,6 @@
+#include <stdio.h>
 int main(int argc,char *argv[]){
+    printf("start nginx\n");
     //我猜是初始化信号的相关操作的
     ngx_init_signals();
     //启动主进程
