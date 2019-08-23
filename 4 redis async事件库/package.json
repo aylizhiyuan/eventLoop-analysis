@@ -1,0 +1,25 @@
+{
+    "name": "libae",
+    "version": "1.0.0",
+    "repo": "aisk/libae",
+    "keywords": [
+        "async",
+        "eventloop",
+        "redis",
+        "net"
+    ],
+    "src": [
+        "src/anet.c",
+        "src/anet.h",
+        "src/ae.c",
+        "src/ae.h",
+        "src/ae_epoll.c",
+        "src/ae_evport.c",
+        "src/ae_kqueue.c",
+        "src/ae_select.c",
+        "src/config.h",
+        "src/fmacros.h",
+        "src/zmalloc.h"
+    ],
+    "makefile": "Makefile"
+}
