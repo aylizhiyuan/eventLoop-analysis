@@ -1,6 +1,6 @@
 #include <signal.h>
 #include "ngx_process.h"
-
+#define NULL 0
 int ngx_reconfigure;
 extern ngx_process_t ngx_processes[NGX_MAX_PROCESSES];
 
@@ -38,13 +38,10 @@ ngx_master_process_cycle()
     }
 }
 
-void
-ngx_start_worker_processes(int n)
-{
+int ngx_start_worker_processes(int n){
     int i;
-
     for (i = 0; i < n; i++) {
-	ngx_spawn_process(ngx_worker_process_cycle);
+	    ngx_spawn_process(ngx_worker_process_cycle);
     }
 }
 
