@@ -8,10 +8,11 @@ static void ngx_worker_process_cycle();
 static void ngx_worker_process_init();
 static void ngx_signal_worker_processes(int signo);
 
+//毫无疑问，这是启动主进程的代码
 void
 ngx_master_process_cycle()
 {
-    sigset_t set;
+    sigset_t set; 
     /*
      * signal
      */
@@ -25,6 +26,7 @@ ngx_master_process_cycle()
 
 
     ngx_init_processes_array();
+    //主函数中应该是默认启动了两个子进程吧，猜的
     ngx_start_worker_processes(2);
 
     /*
@@ -37,10 +39,11 @@ ngx_master_process_cycle()
 	ngx_signal_worker_processes(SIGHUP);
     }
 }
-
+//这个应该是启动两个子进程的具体代码
 int ngx_start_worker_processes(int n){
     int i;
     for (i = 0; i < n; i++) {
+        //这里就是启动两个进程的代码，ngx_workd_process_cycle是处理函数，里面会调用它
 	    ngx_spawn_process(ngx_worker_process_cycle);
     }
 }
@@ -51,6 +54,7 @@ ngx_worker_process_cycle()
     ngx_worker_process_init();
 
     for ( ; ; ) {
+    //读取子进程中的数据并打印    
 	ngx_process_events_and_timers();
     }
 }
@@ -68,7 +72,7 @@ ngx_worker_process_init()
     /* module init*/
     //ngx_modules[i]->init_process();
 }
-
+//这个感觉应该是监视子进程的，可以向子进程写一些数据吧
 static void
 ngx_signal_worker_processes(int signo)
 {

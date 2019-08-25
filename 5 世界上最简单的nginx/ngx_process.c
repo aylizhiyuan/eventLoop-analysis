@@ -22,6 +22,7 @@ int ngx_init_signals(){
     sa.sa_handler = ngx_signal_handler;
     sigemptyset(&sa.sa_mask);
     sa.sa_flags = 0;
+    //注册一个信号处理函数,当有人发出SIGHUP信号的时候，执行ngx_signal_handler
     if(sigaction(signo,&sa,NULL) == -1){
         return (int) SIG_ERR;
     }
@@ -30,6 +31,7 @@ int ngx_init_signals(){
 void ngx_signal_handler(int signo){
     switch(signo){
         case SIGHUP: 
+            //感觉这个信号就是将ngx_reconfigure这个值设置为1
             ngx_reconfigure = 1;
             break;
     }
@@ -38,6 +40,7 @@ void ngx_signal_handler(int signo){
 pid_t ngx_spawn_process(ngx_spawn_proc_pt proc){
     pid_t pid;
     int fd[2],i;
+    //找到空闲的进程组中的下标就直接跳出了
     for(i=0;i<NGX_MAX_PROCESSES;i++){
         if(ngx_processes[i].pid == -1){
             break;
@@ -46,6 +49,7 @@ pid_t ngx_spawn_process(ngx_spawn_proc_pt proc){
     if(socketpair(AF_UNIX,SOCK_STREAM,0,fd) == -1){
         return -1;
     }
+    //创建一个子进程
     pid = fork();
     switch(pid){
         case -1: 
@@ -55,11 +59,12 @@ pid_t ngx_spawn_process(ngx_spawn_proc_pt proc){
         case 0: 
             close(fd[0]);
             worker_ipcfd = fd[1];
-            proc();
+            proc();//当前进程启动成功后，执行proc函数
             break;
         default: 
             break;        
     }
+    //将这个进程存放到进程数组中
     ngx_processes[i].pid = pid;
     ngx_processes[i].ipcfd = fd[0];
     return pid;
