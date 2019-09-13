@@ -10,7 +10,7 @@
         "type": "cppdbg",
         "request": "attach",
         "program": "${workspaceFolder}/objs/nginx",
-        "processId": "711",
+        "processId": "863",
         "MIMode": "lldb"
     },
         {
