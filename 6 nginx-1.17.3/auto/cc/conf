@@ -9,7 +9,7 @@ MAIN_LINK=
 MODULE_LINK="-shared"
 
 ngx_include_opt="-I "
-ngx_compile_opt="-c"
+ngx_compile_opt="-c -g"
 ngx_pic_opt="-fPIC"
 ngx_objout="-o "
 ngx_binout="-o "
