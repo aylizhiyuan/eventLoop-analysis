@@ -8,7 +8,7 @@
             "name": "(lldb) Launch",
             "type": "cppdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/main",
+            "program": "${workspaceFolder}/mynginx",
             "args": [],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",

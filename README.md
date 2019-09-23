@@ -252,7 +252,35 @@ eventLoop是如何做到非阻塞的呢？个人感觉一定要设置超时的�
 
 
 
-6. 写一个世界上最简单的nginx代码
+6. 简单nginx模型
+
+nginx源码博大精深，我们先从大概的项目结构入手来看看nginx在启动阶段都做了什么
+
+    ---- nginx.c 
+    ---- ngx_auto_config.h
+    ---- ngx_conf_file.c
+    ---- ngx_conf_file.h
+    ---- ngx_config.h
+    ---- ngx_cycle.c
+    ---- ngx_cycle.h
+    ---- ngx_daemon.c
+    ---- ngx_event.c
+    ---- ngx_event.h
+    ---- ngx_log.c
+    ---- ngx_log.h
+    ---- ngx_os.h
+    ---- ngx_process.c
+    ---- ngx_process.h
+    ---- ngx_process_cycle.c
+    ---- ngx_process_cycle.h
+    ---- ngx_string.c
+    ---- ngx_string.h
+
+
+
+
+
+
 
       
 
