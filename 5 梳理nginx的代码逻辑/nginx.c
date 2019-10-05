@@ -16,6 +16,7 @@ int main(int argc,const char *argv[]){
     ngx_get_options(argc,argv);
     //初始化日志
     ngx_log_init(ngx_prefix);
+    //如果接受到信号的话，就会将主进程杀死
     if(ngx_signal){
         return ngx_signal_process(ngx_signal);
     }
