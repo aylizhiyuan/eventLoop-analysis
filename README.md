@@ -33,18 +33,18 @@
 多进程的优点很明显，每个客户端都独立占据一部分的内存空间，处理单个请求不会影响其他的请求，但是，问题也是非常的大，原因是因为多进程的服务器会占用更多的系统资源。
 
 那么可以扩展到多线程的模式，多线程的程序会共享内存空间，线程和线程之间会进行争抢，会存在处理顺序上的问题
-    void *do_work(void *arg){
-        while (1) {
-            n = Read(ts->connfd, buf, MAXLINE);
-            Write(ts->connfd, buf, n);
+        void *do_work(void *arg){
+            while (1) {
+                n = Read(ts->connfd, buf, MAXLINE);
+                Write(ts->connfd, buf, n);
+            }
         }
-    }
-    while (1) {
-		connfd = Accept(listenfd, (struct sockaddr *)&cliaddr, &cliaddr_len);
-		/* 达到线程最大数时，pthread_create出错处理, 增加服务器稳定性 */
-        //ts代表的就是服务器的请求，会发送给线程内部
-		pthread_create(&tid, NULL, do_work, (void*)&ts[i]);
-	}
+        while (1) {
+            connfd = Accept(listenfd, (struct sockaddr *)&cliaddr, &cliaddr_len);
+            /* 达到线程最大数时，pthread_create出错处理, 增加服务器稳定性 */
+            //ts代表的就是服务器的请求，会发送给线程内部
+            pthread_create(&tid, NULL, do_work, (void*)&ts[i]);
+        }
 
 多线程中依然会存在各种各样的性能问题，每次请求过来，计算机就要为线程单独开辟一个空间，依然是非常消耗的，来一个开一个，过大的连接会把计算机的资源耗尽
 
