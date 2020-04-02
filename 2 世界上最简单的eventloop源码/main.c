@@ -185,6 +185,7 @@ void using_kqueue(el_loop* loop);
 
 void set_nonblock(int fd) {
   int flag;
+  //有数据则读，没数据则立即返回
   if ((flag = fcntl(fd, F_GETFL, 0)) < 0)
     error("fcntl get error!");
   if (fcntl(fd, F_SETFL, flag | O_NONBLOCK) < 0)
@@ -196,6 +197,7 @@ regist event
  **/
 int regist(int epollfd, int fd, int type) {
   struct kevent changes[1];
+  //注册服务器的读事件到kevent
   EV_SET(&changes[0], fd, type, EV_ADD, 0, 0, NULL);
   int ret = kevent(epollfd, changes, 1, NULL, 0, NULL);
   return TRUE;
@@ -231,15 +233,19 @@ void kqueue_del(el_loop *loop, event *ev) {
 void kqueue_dispatch(el_loop *loop) {
   struct kevent events[MAX_EVENT_COUNT];
   //首次是监听服务器有没有事件发生，如果有的话则返回ret
+  //
   int ret = kevent(loop->ioid, NULL, 0, events, MAX_EVENT_COUNT, NULL);
   int i;
   //循环发生事件的socket
   for (i = 0; i < ret; i++) {
     int sock = events[i].ident;
     int data = events[i].data;
+    //将这个当前发生读事件的请求从active_events队列中删除
     event *e = event_list_delete(loop->active_events, sock);
+    //从kevent监听中删除
     delete(loop->ioid, e->fd, e->flags);
     e->size = data;
+    //扔到就绪的队列中去
     event_list_put(loop->ready_events, e);
   }
 }
@@ -293,10 +299,16 @@ void loop_free(el_loop *loop) {
    core part of all code
 **/
 int loop_run(el_loop *loop) {
-  
+  //以前的kevent是阻塞的，一旦没有读请求的话，它会一直阻塞在这里
+  //但是现在我们设置了不阻塞,kevent一旦发现没有新的请求过来就立即停止了
+  //所以，我们需要在外部加一个循环，不断的去检测事件队列中是否有新的事件产生
   while (loop->event_count > 0) {
+    //首次是服务器的读事件发生了,也就是有新的请求过来了,这时候我们直接将它扔到就绪队列中去
     loop->io.dispatch(loop);
+    //就绪队列来负责处理发生读事件的socket,如果是服务器的读事件则握手成功后,创建新的socket去读
+    //如果是客户端的读事件的话，直接读
     while (event_list_size(loop->ready_events) > 0) {
+      //内层的循环就是调用就绪队列中的回调函数进行处理
       event *e = event_list_get(loop->ready_events);
       //call the callback function
       e->cb(e->fd, e->size, e->arg);
@@ -325,7 +337,9 @@ event *el_event_new(int fd, int flags, cb_func cb, void *arg) {
 }
 
 void el_event_add(el_loop *loop, event *e) {
+  //把服务器的读事件扔到队列中去
   event_list_put(loop->active_events, e);
+  //事件数量+1
   loop->event_count++;
   kqueue_add(loop, e);
 }
@@ -401,14 +415,11 @@ int main() {
   //在loop对象上添加对于kqueue的操作方法以及loop->ioid = kqueue函数
   el_loop *loop = el_loop_new();
   //以服务器的socket对象创建一个新的事件,存储该事件的回调函数和事件的类型
+  //并且将服务器的socket设置为不阻塞,有请求来就读，没请求来的时候则立即返回
   event *e = el_event_new(listenfd, READ_EVENT, onaccept, loop);
-  //将新的事件添加到loop->active_list队列中去，同时，将这个服务器的socket对象加入到kqueue中去
-  //
+  //将服务器的读事件扔到active事件队列中
+  //将服务器的读事件扔到了系统kevent监听队列中去
   el_event_add(loop, e);
-  //首先还是来看是否有客户端的连接上来，如果没有，该代码将会阻塞在这里
-  //如果有的话，将发生事件的客户端放入loop->ready_list队列中去
-  //从read_list中取出所有的事件，并调用这些事件的回调函数，直至完成
-  //这里面的事件主要是服务器的读事件和多个客户端的读事件，无论是谁发生了，都会继续的调用Loop来进行循环
-  //这就是一个简单的event loop
+  
   return el_loop_run(loop);
 }

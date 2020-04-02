@@ -112,49 +112,32 @@ epoll维护了一个监听的数组，当数组中的读事件发生的时候，
 
 并且epoll队列维护了一个就绪的队列nready，只需要轮询所有的就绪队列中的事件即可，不需要将所有的请求都轮询一遍判断当前哪个请求发生了读事件
 
-下一步我们就需要使用eventLoop实现epoll的异步了，epoll_wait依然是阻塞的，如何让它变得不阻塞呢？
-
-
-        while (loop->event_count > 0) {
-            loop->io.dispatch(loop);
-            while (event_list_size(loop->ready_events) > 0) {
-            event *e = event_list_get(loop->ready_events);
-            //call the callback function
-            e->cb(e->fd, e->size, e->arg);
-            event_free(e);
-            loop->event_count--;
-            }
-        }
-
-服务器创建socket ---> 将服务器的socket封装到一个事件中去，并给它注册一个回调函数---> 将该事件首先放入active_list中(待触发的双向链表中),event_count数量+1，然后开启一个循环----> 首次监听服务器的事件发否发生了，如果没有发生阻塞，如果发生了的话，那么它会把事件从active_list扔到ready_list中去 ----> 再一个循环，内循环中会找到在ready_list中的所有事件循环来执行回调函数，执行完后event_count-- ----> 按说怎么会无线循环呢？秘密就在回调函数中
-
-服务器的回调函数onaccpet ----> 调用accpet获取客户端的socket ----> 将客户端的socket封装成一个事件，注册回调函数onread----> 这次再将客户端和服务器端的socket再次加入到active_list中 ---> active_list中始终大于0，所以，循环始终不会终止
-
-如果客户端的连接结束后 ----> 将服务器的事件继续放入到active_list中，循环不终止
-
 你会发现eventloop实质上就是来在外边来了两个循环
 
     while(1){
         //外层循环不断的循环监听服务器/客户端的事件
-        //感觉必须要设置超时的时间才行，一定不能阻塞
+        //如果发现有读事件产生的话,就直接扔到就绪队列中
         while(1){
             //内层循环将就绪的服务器/客户端的回调函数执行
-            //如果事件没有发生的话，继续将服务器/客户端的事件加入到外层循环中去
+            //执行完毕后，继续将服务器/客户端的事件加入到外层循环中去
         }
     }
 
-eventLoop是如何做到非阻塞的呢？个人感觉一定要设置超时的时间，当该事件没有发生的时候，我们直接返回一个一个结果，让程序继续，然后依然把任务扔到eventLoop中，直到任务事件发生了，我们才去执行它。
+对比一下如果不加外层循环下的kevent会是什么状态?
 
-当然，真正用的时候还是要配合多出一个单独的线程的,例如nodeJS中用来单独处理异步任务的eventLoop
+    while(1){
+        //这里会阻塞.....
+        nev = kevent(kq, changes, FD_NUM, events, FD_NUM, NULL); // 已经就绪的文件描述符数量
+        if( nev <= 0 ) quit("kevent()");
+ 
+        int i;
+        for(i=0; i<nev; i++){
+            struct kevent event = events[i];
+        }
+    }
 
+这里，只是简单的把eventloop的具体做法描述了一下，实际应用中是如何用的，还是要去看libuv
 
-我们来看看nginx的做法
-
-每个worker进程都是从master进程fork出来的，在master进程中，先建立好需要listen的socket之后，然后再fork出多个worker进程,所有的worker进程的listenfd会在新连接到来的时候变得可读，为保证只有一个进程处理该连接,所有的worker进程都会抢accept_mutex,抢到互斥锁的进程注册listenfd读事件，调用accept接受连接。
-
-多个请求 ---> worker进程争抢(并发执行) ----> worker进程中采用异步非阻塞方式处理请求 ---> eventLoop ----> 请求事件
-
-注意，我们之前写的很多异步的代码，例如eventEmitter和promise都是属于手动触发的异步，实际上更多应用场景中，我们需要的是自动触发的，例如ajax,onClick事件这些，在浏览器中，他们其实就是一个eventLoop来负责触发的
 
 
 
