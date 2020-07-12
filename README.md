@@ -9,62 +9,22 @@ c源程序 ----> 汇编.s -----> 二进制文件.o -----> 链接器(静态/动�
 
 可执行文件包括了这些数据段
 
-- 程序的指令.text文本段
-- 数据.data数据段 (初始化的全局变量和静态变量)
 - ELF头文件段
-- 临时变量在运行时分配
+通常会存放一些基本信息，通常比较关心的就是ELF的类型，32位还是64位，使用`readelf -h 文件`来查看即可,查看段的具体信息可以使用`objdump -h 文件`来看每个段的大小,也可以通过`objdump -d 文件`来反汇编文件，查看到的就是文件的汇编
 
+- 程序的指令.text代码段
 
-```
-#include<iostream>
+代码段可以通过`objdump -s -d 文件`
 
-using namespace std;
+- 数据.data数据段 (初始化的全局变量和静态变量)
 
-int global_a = 100; // 全局变量
-int global_b; // 未初始化的全局变量
-static int global_static_a = 200; // 静态变量
+代码段可以通过`objdump -s -d 文件`
 
-int main(){
-    static int main_static_b = 200; // 静态变量
-    static int main_static_c; // 未初始化的静态变量
-    cout << "Hello World" << endl;
-    return 0;
-}
-```
-编译后，我们可以用size命令来查看各个段的大小
+- 数据.bss数据段(未初始化的全局变量和局部静态变量)
 
-```
-text    data     bss     dec     hex filename
+代码段可以通过`objdump -s -d 文件`
 
-1914      316     160    2390     956 a.out
-
-```
-我们来看下data段的数据
-
-```
-choudan@ubuntu:~/coding/cpp$ objdump -d -j .data a.out 
-
-a.out:     file format elf32-i386
-
-
-Disassembly of section .data:
-
-0804a020 <__data_start>:
- 804a020:   00 00                   add    %al,(%eax)
-    ...
-    
-0804a024 <__dso_handle>:
- 804a024:   00 00 00 00                                         ....
-     
-0804a028 <global_a>: 这是我们的global_a
- 804a028:  64 00 00 00                                          d...
-      
-0804a02c <_ZL15global_static_a>: 这是我们的global_static_a
- 804a02c: c8 00 00 00                                           ....
-       
-0804a030 <_ZZ4mainE13main_static_b>: 这是我们的main_static_b
- 804a030:    c8 00 00 00     
-```
+>  临时变量在运行时分配
 
 
 
